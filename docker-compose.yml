@@ -1,0 +1,17 @@
+version: "3.7"
+
+services:
+  opsdroid:
+    image: opsdroid/opsdroid:v0.26.0
+    ports:
+      - 8080:8080
+    volumes:
+      -  ./config:/home/opsdroid/.config/opsdroid/
+      -  ./skills:/home/opsdroid/skills/
+    environment:
+      GITLAB_API_ADDR: ${GITLAB_API_ADDR}
+      GITLAB_TOKEN: ${GITLAB_TOKEN}
+      GITLAB_PROJECT_ID: ${GITLAB_PROJECT_ID}
+      BRANCH_NAME: ${BRANCH_NAME}
+      LOCK_NAME: ${LOCK_NAME}
+

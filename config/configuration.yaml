@@ -1,0 +1,32 @@
+welcome-message: false
+
+logging:
+  # path: ~/.opsdroid/output.log
+  level: info
+  console: true
+  filter:
+    blacklist:
+      - "slack_sdk.socket_mode.aiohttp"
+
+connectors:
+  slack:
+    bot-token: ""
+    socket-mode: true # defaul true. *
+    app-token: "" # socket-mode needs to be true
+    # bot-name: "opsdroid" # default "opsdroid" **
+    icon-emoji: ":robot_face:" # default ":robot_face:" **
+    default-room: "#test" # default "#general"
+    start-thread: false # default false. if true, opsdroid will start a thread when replying to a message
+
+skills:
+  # hello: {}
+  - name: hello
+  - name: ping
+    path: /home/opsdroid/skills/ping.py
+  - name: change_deploy_mode
+    path: /home/opsdroid/skills/change_deploy_mode
+    no-cache: true
+
+# databases:
+#   sqlite:
+#     path: "/root/.config/opsdroid/messages.db"
