@@ -24,7 +24,7 @@ skills:
   - name: ping
     path: /home/opsdroid/skills/ping.py
   - name: change_deploy_mode
-    path: /home/opsdroid/skills/change_deploy_mode
+    path: /home/opsdroid/skills/gitlab
     no-cache: true
 
 # databases:
