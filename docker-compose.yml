@@ -2,16 +2,19 @@ version: "3.7"
 
 services:
   opsdroid:
-    image: opsdroid/opsdroid:v0.26.0
+    build: .
+    image: chatops
     ports:
       - 8080:8080
     volumes:
-      -  ./config:/home/opsdroid/.config/opsdroid/
-      -  ./skills:/home/opsdroid/skills/
+      -  ./config:/chatops/
+      -  ./skills:/chatops/skills/
     environment:
       GITLAB_API_ADDR: ${GITLAB_API_ADDR}
       GITLAB_TOKEN: ${GITLAB_TOKEN}
       GITLAB_PROJECT_ID: ${GITLAB_PROJECT_ID}
-      BRANCH_NAME: ${BRANCH_NAME}
-      LOCK_NAME: ${LOCK_NAME}
-
+      GITLAB_BRANCH_NAME: ${GITLAB_BRANCH_NAME}
+      GITLAB_CD_YAML_FILE: ${GITLAB_CD_YAML_FILE}
+      SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+    entrypoint: ["opsdroid", "start"]

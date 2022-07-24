@@ -3,6 +3,9 @@ import base64
 import pathlib
 import typing
 import logging
+import sys
+sys.path.append(os.path.abspath("/chatops/skills"))
+from settings import settings
 
 import gitlab
 import yaml
@@ -11,24 +14,15 @@ from opsdroid.matchers import match_regex, match_parse
 from opsdroid.message import Message
 
 
-# Get env variables
-GITLAB_API_ADDR: str = os.environ.get("GITLAB_API_ADDR").replace("'","")
-GITLAB_TOKEN: str = os.environ.get('GITLAB_TOKEN')
-GITLAB_PROJECT_ID: int = os.environ.get('GITLAB_PROJECT_ID')
-BRANCH_NAME: str = os.environ.get('BRANCH_NAME').replace("'","")
-LOCK_NAME: str = os.environ.get('LOCK_NAME').replace("'","") # YML file
-
-
 # Gitlab connection
-gl = gitlab.Gitlab(GITLAB_API_ADDR, private_token=GITLAB_TOKEN)
-project_handler: typing.Any = gl.projects.get(GITLAB_PROJECT_ID)
+gl = gitlab.Gitlab(settings.GITLAB_API_ADDR, private_token=settings.GITLAB_TOKEN)
+project_handler: typing.Any = gl.projects.get(settings.GITLAB_PROJECT_ID)
 
 
 class test(Skill):
     @match_regex(r"test")
     async def test(self, message):
-        test = message
-        # targets = self.config['LOCK_NAME']
+        test = settings.GITLAB_CD_YAML_FILE
         await message.respond(f"Text: {test}")
         # logging.info()
 
@@ -49,8 +43,9 @@ class test(Skill):
             await message.respond(f'Im confused. Bad desire {deploy_mode}')
 
 
-class Blank_line_dumper(yaml.SafeDumper):
-    """ insert blank lines between top-level yaml objects """
+class BlankLineYaml(yaml.SafeDumper):
+    """ In the basic version, by default, all empty lines are erased when saving.
+    This class corrects this and adds empty indents between the works """
     def write_line_break(self, data=None):
         super().write_line_break(data)
 
@@ -59,7 +54,7 @@ class Blank_line_dumper(yaml.SafeDumper):
 
 
 def _download_remote_file_from_gitlab(project_handler: typing.Any, original_name: str) -> typing.Optional[pathlib.Path]:
-    new_location: pathlib.Path = (f'/tmp/{LOCK_NAME}')
+    new_location: pathlib.Path = (f'/tmp/{settings.GITLAB_CD_YAML_FILE}')
     os.makedirs(os.path.dirname(os.path.realpath(new_location)), exist_ok=True)
     try:
         with open(new_location, 'wb') as f:
@@ -74,7 +69,7 @@ def _download_remote_file_from_gitlab(project_handler: typing.Any, original_name
 def _get_deploy_status():
     "Get deploy current status"
     # Download file
-    lock_location: typing.Optional[pathlib.Path] = _download_remote_file_from_gitlab(project_handler, LOCK_NAME)
+    lock_location: typing.Optional[pathlib.Path] = _download_remote_file_from_gitlab(project_handler, settings.GITLAB_CD_YAML_FILE)
     with open(lock_location, 'r') as f:
         list_doc = yaml.safe_load(f)
         rules = list_doc["deploy"]["rules"] # must specify the destination point .yml
@@ -84,7 +79,7 @@ def _get_deploy_status():
 def _change_deploy_mode(deploy_mode: str, username:str="opsdroid") -> str:
     "Change deploy mode in yml file"
     # Download file
-    lock_location: typing.Optional[pathlib.Path] = _download_remote_file_from_gitlab(project_handler, LOCK_NAME)
+    lock_location: typing.Optional[pathlib.Path] = _download_remote_file_from_gitlab(project_handler, settings.GITLAB_CD_YAML_FILE)
     # Cnahge yaml file
     current_deploy_status: str = _get_deploy_status()
     with open(lock_location, 'r') as f:
@@ -95,21 +90,25 @@ def _change_deploy_mode(deploy_mode: str, username:str="opsdroid") -> str:
         elif current_deploy_status == 'always' and deploy_mode == 'manual':
             rules[0]["when"] = "manual"
         else:
-            return 'Nothing to change'
+            result = 'Gitlab deploy mode - nothing to change'
+            logging.info(result)
+            return result
     with open(lock_location, 'w') as f:
-       f.write(yaml.dump(list_doc, Dumper=Blank_line_dumper, sort_keys=False))
+       f.write(yaml.dump(list_doc, Dumper=BlankLineYaml, sort_keys=False))
     # Git push
     project_handler.commits.create(
             {
-                "branch": BRANCH_NAME,
+                "branch": settings.GITLAB_BRANCH_NAME,
                 "commit_message": f"{username} change deploy mode to: {deploy_mode}, by ChatOps",
                 "actions": [
                     {
                         "action": "update",
-                        "file_path": LOCK_NAME,
+                        "file_path": settings.GITLAB_CD_YAML_FILE,
                         "content": open(lock_location).read(),
                     },
                 ],
             }
         )
-    return f"Changed deploy mode to: {deploy_mode}"
+    result = f"{username} Changed deploy mode to: {deploy_mode}"
+    logging.info(result)
+    return result
